@@ -849,3 +849,128 @@ Docker 기반 개발 워크스테이션 환경 구축을 완료했다.
 Docker 볼륨 실습을 통해 컨테이너가 삭제되어도 볼륨에 저장된 데이터는 유지된다는 점도 확인했다.
 
 이번 미션을 통해 개발 환경 구축, 컨테이너 실행, 권한 관리, 볼륨 영속성, 트러블슈팅 기록까지 전반적인 개발 워크스테이션 구축 과정을 경험했다.
+
+### 추가
+
+이번 미션을 통해 개발 워크스테이션 구축에 필요한 기본 환경을 직접 설정하고 확인했다.
+
+#### 수행 내용 요약
+
+- GitHub 저장소 생성 및 로컬 프로젝트 연결
+- `Dockerfile` 작성
+- `nginx:alpine` 기반 Docker 이미지 빌드
+- Docker 컨테이너 실행
+- `8080:80` 포트 매핑 설정
+- `docker ps`로 컨테이너 실행 상태 확인
+- `curl.exe http://localhost:8080` 명령으로 웹 서버 응답 확인
+- 브라우저에서 `http://localhost:8080` 접속 확인
+- Docker 기본 명령어 실습
+  - `docker images`
+  - `docker ps`
+  - `docker ps -a`
+  - `docker logs`
+  - `docker stats`
+- `hello-world`, `ubuntu` 컨테이너 실행 실습
+- Docker 볼륨 생성 및 데이터 영속성 확인
+- 터미널 기본 명령어 실습
+- 파일 및 디렉토리 권한 변경 실습 (`755`, `644`, `700`)
+
+#### 최종 검증 결과
+
+컨테이너 실행 상태 확인:
+
+```bash
+docker ps
+```
+
+확인 결과:
+
+```text
+CONTAINER ID   IMAGE            COMMAND                   CREATED          STATUS          PORTS                                     NAMES
+cd667d637c1a   my-workstation   "/docker-entrypoint.…"   52 seconds ago   Up 52 seconds   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   workstation-container
+```
+
+웹 서버 응답 확인:
+
+```bash
+curl.exe http://localhost:8080
+```
+
+출력 결과:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Docker Port Test</title>
+</head>
+<body>
+  <h1>Hello from Docker</h1>
+  <p>nginx container is running.</p>
+</body>
+</html>
+```
+
+위 결과를 통해 Docker 컨테이너가 정상적으로 실행되었고, 포트 매핑 및 웹 서버 접속이 올바르게 동작함을 확인했다.
+
+#### 트러블슈팅 정리
+
+**1) `docker logs` 명령 실행 오류**
+
+문제:
+- `docker logs` 실행 시 컨테이너 이름 또는 ID를 함께 입력하지 않아 오류가 발생했다.
+
+해결:
+
+```bash
+docker logs workstation-container
+```
+
+**2) PowerShell에서 `ls -ld` 명령 사용 문제**
+
+문제:
+- Linux에서 사용하는 `ls -ld` 명령이 PowerShell 환경에서는 동일하게 동작하지 않았다.
+
+해결:
+- Windows 환경에 맞는 명령어를 사용하거나, Git Bash 또는 WSL 같은 Linux 스타일 터미널을 활용했다.
+
+**3) CMD에서 `${PWD}` 사용 오류**
+
+문제:
+- `${PWD}`는 PowerShell 문법이므로 CMD에서는 인식되지 않았다.
+
+해결:
+- CMD에서는 `%cd%`를 사용해야 한다.
+- 또는 볼륨 옵션 없이 먼저 컨테이너를 실행해 동작을 확인할 수 있다.
+
+예시:
+
+```bash
+docker run -d --name workstation-container -p 8080:80 my-workstation
+```
+
+**4) 컨테이너 이름 중복 오류**
+
+문제:
+- 같은 이름의 컨테이너가 이미 존재하여 새 컨테이너 실행에 실패했다.
+
+해결:
+
+```bash
+docker rm -f workstation-container
+docker run -d --name workstation-container -p 8080:80 my-workstation
+```
+
+**5) `ubuntu` 컨테이너에서 `bash` 종료 문제**
+
+문제:
+- `bash` 셸에서 `exit`를 입력하면 컨테이너가 종료되었다.
+
+해결:
+- 이는 정상 동작이며, 종료 후 `docker ps -a`로 상태를 확인할 수 있다.
+
+#### 느낀 점
+
+이번 실습을 통해 Docker 이미지를 만들고 컨테이너를 실행하는 기본 흐름을 직접 경험할 수 있었다.  
+또한 포트 매핑, 로그 확인, 볼륨 사용, 명령어 환경 차이 같은 실제 개발 환경에서 자주 만나는 문제를 직접 해결해 보면서 Docker 사용 방법을 더 익힐 수 있었다.
