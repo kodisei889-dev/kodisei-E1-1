@@ -974,3 +974,88 @@ docker run -d --name workstation-container -p 8080:80 my-workstation
 
 이번 실습을 통해 Docker 이미지를 만들고 컨테이너를 실행하는 기본 흐름을 직접 경험할 수 있었다.  
 또한 포트 매핑, 로그 확인, 볼륨 사용, 명령어 환경 차이 같은 실제 개발 환경에서 자주 만나는 문제를 직접 해결해 보면서 Docker 사용 방법을 더 익힐 수 있었다.
+
+### 바인드 마운트(Bind Mount) 검증
+
+호스트(내 PC)의 `site` 폴더를 컨테이너 내부 nginx 웹 루트(`/usr/share/nginx/html`)에 바인드 마운트하여,  
+호스트에서 수정한 파일이 컨테이너 웹 서버 응답에 즉시 반영되는지 확인했다.
+
+#### 1) 테스트용 폴더 및 파일 생성
+
+```bash
+mkdir -p site
+echo '<h1>Bind Mount Test</h1>' > site/index.html
+cat site/index.html
+```
+
+출력 결과:
+
+```html
+<h1>Bind Mount Test</h1>
+```
+
+#### 2) nginx 컨테이너 실행 (바인드 마운트 적용)
+
+```bash
+docker rm -f mount-test
+docker run -d --name mount-test -p 8081:80 -v ${PWD}/site:/usr/share/nginx/html nginx:alpine
+docker ps
+```
+
+출력 결과 예시:
+
+```text
+mount-test
+CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS         PORTS                                   NAMES
+xxxxxx         nginx:alpine   "/docker-entrypoint.…"   xx seconds ago  Up xx seconds  0.0.0.0:8081->80/tcp, [::]:8081->80/tcp mount-test
+```
+
+#### 3) 웹 서버 응답 확인
+
+```bash
+curl http://localhost:8081
+```
+
+출력 결과:
+
+```html
+<h1>Bind Mount Test</h1>
+```
+
+#### 4) 호스트 파일 수정 후 즉시 반영 확인
+
+```bash
+echo '<h1>Bind Mount Updated</h1>' > site/index.html
+cat site/index.html
+curl http://localhost:8081
+```
+
+출력 결과:
+
+```html
+<h1>Bind Mount Updated</h1>
+```
+
+#### 5) 검증 결과
+
+- 호스트의 `site/index.html` 파일 내용이 컨테이너 내부 nginx 웹 루트에 연결되었다.
+- 호스트에서 파일을 수정한 뒤 컨테이너를 다시 빌드하거나 재시작하지 않아도 웹 응답에 변경 사항이 반영되었다.
+- 이를 통해 바인드 마운트가 정상적으로 동작함을 확인했다.
+
+#### 6) 재현 시 주의사항
+
+- `8081` 포트가 이미 사용 중이면 다른 포트(예: `8082`)로 변경해야 한다.
+- 셸 환경에 따라 현재 경로 표기 방식이 다를 수 있다.
+  - PowerShell: `${PWD}`
+  - CMD: `%cd%`
+  - Git Bash / Linux / macOS: `$(pwd)`
+- Windows CMD 예시:
+
+```bash
+docker run -d --name mount-test -p 8081:80 -v %cd%/site:/usr/share/nginx/html nginx:alpine
+```
+
+#### 7) 정리
+
+이 실습을 통해 **호스트 폴더와 컨테이너 내부 디렉터리를 직접 연결하는 바인드 마운트 방식**을 검증했으며,  
+로컬 파일 수정 사항이 컨테이너 서비스에 즉시 반영됨을 확인했다.
