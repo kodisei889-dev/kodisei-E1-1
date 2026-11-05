@@ -30,7 +30,7 @@
 | 터미널 | PowerShell |
 | Docker 환경 | Docker Desktop |
 | Git 저장소 | GitHub |
-| 작업 디렉터리 | `D:\kodisei-E1-1` |
+| 작업 디렉터리 | `D:\코디세이\kodisei-E1-1` |
 | 원격 저장소 | `https://github.com/kodisei889-dev/kodisei-E1-1.git` |
 | 웹 서버 테스트 이미지 | `nginx:alpine` |
 | Linux 권한 테스트 이미지 | `ubuntu:22.04` |
@@ -42,13 +42,14 @@
 프로젝트 구조는 다음과 같다.
 
 ```text
-D:\kodisei-E1-1
+D:\코디세이\kodisei-E1-1  
 ├─ README.md
 ├─ Dockerfile
 ├─ site
 │  └─ index.html
 ├─ permission_test.txt
 └─ permission_dir_test
+   └─ .gitkeep
 ```
 
 각 파일과 폴더의 역할은 다음과 같다.
@@ -356,17 +357,17 @@ docker build -t my-workstation .
 로컬에 생성된 Docker 이미지 목록을 확인했다.
 
 ```powershell
-docker images
+docker image ls --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}"
 ```
 
-출력 일부:
+출력:
 
 ```text
-REPOSITORY       TAG       IMAGE ID       CREATED        SIZE
-my-workstation   latest    xxxxxxxxxxxx   recently       xxMB
-nginx            alpine    xxxxxxxxxxxx   recently       xxMB
-hello-world      latest    xxxxxxxxxxxx   recently       xxkB
-ubuntu           22.04     xxxxxxxxxxxx   recently       xxMB
+REPOSITORY       TAG       IMAGE ID       CREATED          SIZE
+my-workstation   latest    db277bf26b62   25 seconds ago   93.6MB
+ubuntu           22.04     076e7bf82319   10 days ago      119MB
+nginx            alpine    785835ea65db   2 weeks ago      94.5MB
+hello-world      latest    c567b231f656   7 months ago     25.9kB
 ```
 
 `my-workstation` 이미지가 표시되므로 Dockerfile을 이용한 이미지 빌드가 성공했음을 확인할 수 있다.
@@ -466,7 +467,7 @@ docker ps -a
 ```text
 CONTAINER ID   IMAGE            COMMAND                  STATUS                     PORTS                  NAMES
 xxxxxxxxxxxx   my-workstation   "/docker-entrypoint.…"   Up                         0.0.0.0:8080->80/tcp   workstation-container
-xxxxxxxxxxxx   hello-world      "/hello"                 Exited (0)                　　　　　　　　　　　    vigilant_archimedes
+xxxxxxxxxxxx   hello-world      "/hello"                 Exited (0)                                        vigilant_archimedes
 ```
 
 `docker ps`는 실행 중인 컨테이너만 보여주고, `docker ps -a`는 실행 중이거나 종료된 모든 컨테이너를 보여준다.
@@ -872,6 +873,7 @@ curl.exe http://localhost:8081
 | 연결 방식 | 파일을 이미지 안에 복사 | 호스트 폴더를 컨테이너 경로에 연결 |
 | 장점 | 이미지 안에 파일이 포함되어 배포가 편함 | 파일 수정 결과를 바로 확인 가능 |
 | 단점 | 파일 수정 후 다시 빌드해야 함 | 호스트 경로에 의존함 |
+
 ---
 
 ## 22. 컨테이너 중지 및 삭제
@@ -936,17 +938,29 @@ Bind for 0.0.0.0:8080 failed: port is already allocated
 
 이 오류는 호스트의 8080 포트를 다른 컨테이너나 프로그램이 이미 사용 중일 때 발생한다.
 
-해결 방법은 두 가지이다.
-
-첫 번째 방법은 기존 컨테이너를 중지하고 삭제하는 것이다.
+먼저 Docker 컨테이너가 해당 포트를 사용 중인지 확인한다.
 
 ```powershell
 docker ps
-docker stop 기존컨테이너이름
-docker rm 기존컨테이너이름
 ```
 
-두 번째 방법은 다른 포트를 사용하는 것이다.
+출력 예시:
+
+```text
+CONTAINER ID   IMAGE            COMMAND                  STATUS        PORTS                  NAMES
+xxxxxxxxxxxx   my-workstation   "/docker-entrypoint.…"   Up            0.0.0.0:8080->80/tcp   workstation-container
+```
+
+`PORTS` 항목에 `0.0.0.0:8080->80/tcp`처럼 표시되면 해당 컨테이너가 호스트의 8080 포트를 사용 중이라는 의미이다.
+
+이 경우 기존 컨테이너를 중지하고 삭제할 수 있다.
+
+```powershell
+docker stop workstation-container
+docker rm workstation-container
+```
+
+또는 다른 호스트 포트를 사용하여 새 컨테이너를 실행할 수 있다.
 
 ```powershell
 docker run -d --name workstation-container-2 -p 8082:80 my-workstation
@@ -958,8 +972,7 @@ docker run -d --name workstation-container-2 -p 8082:80 my-workstation
 http://localhost:8082
 ```
 
-```markdown
-포트가 어떤 프로세스에서 사용 중인지 확인하기 위해 Windows PowerShell에서 다음 명령어를 사용할 수 있다.
+Docker 컨테이너가 아닌 다른 프로그램이 포트를 사용 중인지 확인하려면 Windows PowerShell에서 다음 명령어를 사용할 수 있다.
 
 ```powershell
 netstat -ano | findstr :8080
@@ -971,9 +984,9 @@ netstat -ano | findstr :8080
 TCP    0.0.0.0:8080    0.0.0.0:0    LISTENING    12345
 ```
 
-마지막 숫자 `12345`는 해당 포트를 사용 중인 프로세스 ID이다.
+마지막 숫자 `12345`는 해당 포트를 사용 중인 프로세스 ID, 즉 PID이다.
 
-PowerShell에서는 다음 명령어로도 확인할 수 있다.
+PowerShell에서는 다음 명령어로도 8080 포트 사용 여부를 확인할 수 있다.
 
 ```powershell
 Get-NetTCPConnection -LocalPort 8080
@@ -985,23 +998,21 @@ Get-NetTCPConnection -LocalPort 8080
 Stop-Process -Id 12345 -Force
 ```
 
-Linux나 macOS 환경에서는 다음 명령어를 사용할 수 있다.
+여기서 `12345`는 예시 PID이므로 실제 실행 시에는 본인 컴퓨터에서 확인된 PID를 사용해야 한다.
+
+Linux나 macOS 환경에서는 다음 명령어로 포트 사용 프로세스를 확인할 수 있다.
 
 ```bash
 lsof -i :8080
 ```
 
-Docker 컨테이너가 포트를 사용 중인지 확인하려면 다음 명령어를 사용할 수 있다.
+정리하면 포트 충돌 문제는 다음 순서로 해결할 수 있다.
 
-```powershell
-docker ps
-```
-
-`PORTS` 항목에서 `0.0.0.0:8080->80/tcp`처럼 표시되면 해당 컨테이너가 8080 포트를 사용 중이라는 의미이다.
-```
-
-주의: 위에서 `12345`는 예시 PID입니다. 실제 실행 결과의 PID를 사용해야 합니다.
-
+1. `docker ps`로 Docker 컨테이너가 포트를 사용 중인지 확인한다.
+2. 사용 중인 컨테이너가 있으면 `docker stop`, `docker rm`으로 중지 및 삭제한다.
+3. 다른 프로그램이 포트를 사용 중이면 `netstat -ano | findstr :8080`으로 PID를 확인한다.
+4. 필요하면 `Stop-Process -Id PID -Force`로 프로세스를 종료한다.
+5. 포트를 해제하기 어렵다면 `-p 8082:80`처럼 다른 포트를 사용한다.
 
 ---
 
@@ -1075,10 +1086,49 @@ docker info
 
 ## 24. Git 커밋 및 GitHub 업로드
 
+실습 내용을 정리한 뒤 변경 사항을 GitHub 원격 저장소에 업로드했다.
+
+먼저 현재 작업 디렉터리가 프로젝트 폴더인지 확인했다.
+
+```powershell
+pwd
+```
+
+작업 디렉터리는 다음과 같다.
+
+```text
+D:\코디세이\kodisei-E1-1
+```
+
+바인드 마운트 실습 중 `site/index.html` 파일 내용을 변경했으므로, 최종 제출 상태에서는 다시 기본 HTML 내용으로 복구했다.
+
+```powershell
+echo "<h1>Hello from Docker</h1>" > site/index.html
+```
+
+복구된 파일 내용을 확인했다.
+
+```powershell
+cat site/index.html
+```
+
+출력:
+
+```html
+<h1>Hello from Docker</h1>
+```
+
+Git은 빈 디렉터리를 추적하지 않기 때문에, `permission_dir_test` 폴더를 저장소에 포함하기 위해 `.gitkeep` 파일을 생성했다.
+
+```powershell
+New-Item permission_dir_test/.gitkeep -ItemType File -Force
+```
+
 변경된 파일 상태를 확인했다.
 
 ```powershell
 git status
+```
 
 출력 예시:
 
@@ -1086,12 +1136,18 @@ git status
 On branch main
 Changes not staged for commit:
   modified:   README.md
+  modified:   site/index.html
+
+Untracked files:
+  Dockerfile
+  permission_test.txt
+  permission_dir_test/.gitkeep
 ```
 
 변경된 파일을 스테이징했다.
 
 ```powershell
-git add README.md Dockerfile site/index.html permission_test.txt permission_dir_test
+git add README.md Dockerfile site/index.html permission_test.txt permission_dir_test/.gitkeep
 ```
 
 또는 전체 변경 파일을 한 번에 추가할 수도 있다.
@@ -1115,7 +1171,7 @@ Changes to be committed:
   modified:   site/index.html
   new file:   Dockerfile
   new file:   permission_test.txt
-  new file:   permission_dir_test
+  new file:   permission_dir_test/.gitkeep
 ```
 
 커밋을 생성했다.
@@ -1153,7 +1209,7 @@ To https://github.com/kodisei889-dev/kodisei-E1-1.git
 
 ## 25. 최종 확인 명령어 정리
 
-실습 완료 후 다음 명령어들로 상태를 다시 확인했다.
+실습 완료 후 Git, Docker 이미지, 컨테이너, 볼륨 상태를 다시 확인했다.
 
 ### Git 상태 확인
 
@@ -1175,18 +1231,20 @@ nothing to commit, working tree clean
 ### Docker 이미지 확인
 
 ```powershell
-docker images
+docker image ls --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}"
 ```
 
-확인해야 할 이미지 예시:
+출력:
 
 ```text
-REPOSITORY       TAG
-my-workstation   latest
-nginx            alpine
-ubuntu           22.04
-hello-world      latest
+REPOSITORY       TAG       IMAGE ID       CREATED          SIZE
+my-workstation   latest    db277bf26b62   25 seconds ago   93.6MB
+ubuntu           22.04     076e7bf82319   10 days ago      119MB
+nginx            alpine    785835ea65db   2 weeks ago      94.5MB
+hello-world      latest    c567b231f656   7 months ago     25.9kB
 ```
+
+`my-workstation` 이미지가 존재하므로 Dockerfile을 이용한 이미지 빌드가 정상적으로 완료되었음을 확인할 수 있다.
 
 ### Docker 컨테이너 확인
 
@@ -1195,6 +1253,8 @@ docker ps -a
 ```
 
 실행 중이거나 종료된 컨테이너 목록을 확인할 수 있다.
+
+`docker ps`는 실행 중인 컨테이너만 보여주고, `docker ps -a`는 종료된 컨테이너까지 모두 보여준다.
 
 ### Docker 볼륨 확인
 
@@ -1209,7 +1269,17 @@ DRIVER    VOLUME NAME
 local     mission-volume
 ```
 
-`mission-volume`이 존재하면 볼륨 생성 실습이 정상적으로 수행된 것이다.
+`mission-volume`이 존재하면 볼륨 생성 및 데이터 영속성 실습이 정상적으로 수행된 것이다.
+
+### README 코드블록 확인
+
+Markdown 코드블록이 정상적으로 닫혔는지 확인하기 위해 다음 명령어를 사용했다.
+
+```powershell
+(Select-String -Path README.md -Pattern '^```').Count
+```
+
+출력된 숫자가 짝수이면 코드블록의 시작과 끝이 맞는 상태이다.
 
 ---
 
@@ -1217,55 +1287,77 @@ local     mission-volume
 
 이번 실습을 통해 다음 내용을 확인했다.
 
-1. Git 저장소를 클론하고 원격 저장소와 연결할 수 있다.
-2. Git 사용자 정보를 설정하고 확인할 수 있다.
-3. 변경된 파일을 `git add`, `git commit`, `git push`로 GitHub에 업로드할 수 있다.
-4. Docker CLI와 Docker 데몬의 동작 상태를 확인할 수 있다.
-5. Dockerfile을 작성하여 이미지를 빌드할 수 있다.
+1. Git 저장소를 사용하여 프로젝트 파일을 관리할 수 있다.
+2. Git 원격 저장소와 로컬 저장소의 연결 상태를 확인할 수 있다.
+3. 변경된 파일을 `git add`, `git commit`, `git push` 순서로 GitHub에 업로드할 수 있다.
+4. Docker CLI와 Docker 데몬의 연결 상태를 확인할 수 있다.
+5. Dockerfile을 작성하여 사용자 정의 이미지를 빌드할 수 있다.
 6. 이미지를 기반으로 컨테이너를 실행할 수 있다.
-7. `hello-world` 컨테이너 실행으로 Docker 설치 상태를 검증할 수 있다.
-8. nginx 컨테이너를 실행하고 포트 매핑으로 웹 서버에 접근할 수 있다.
+7. `hello-world` 컨테이너를 실행하여 Docker 설치 상태를 검증할 수 있다.
+8. nginx 컨테이너를 실행하고 포트 매핑을 통해 웹 서버에 접근할 수 있다.
 9. 이미지와 컨테이너의 차이를 설명할 수 있다.
-10. Docker 컨테이너의 네트워크 네임스페이스와 포트 포워딩 개념을 이해했다.
-11. Docker 볼륨을 사용하여 컨테이너 삭제 후에도 데이터를 유지할 수 있음을 확인했다.
-12. 바인드 마운트를 사용하여 호스트 파일 변경이 컨테이너에 반영되는 것을 확인했다.
-13. Linux 컨테이너 내부에서 `chmod`를 사용해 파일과 디렉터리 권한을 변경할 수 있다.
-14. Windows PowerShell 명령어와 Linux shell 명령어의 차이를 구분할 수 있다.
-15. 포트 충돌, 컨테이너 이름 충돌, Docker 데몬 미실행 등의 문제를 해결할 수 있다.
+10. Docker 컨테이너가 호스트와 분리된 네트워크 네임스페이스를 가진다는 점을 이해했다.
+11. `-p 8080:80` 옵션을 통해 호스트 포트와 컨테이너 포트를 연결할 수 있다.
+12. Docker 볼륨을 사용하면 컨테이너가 삭제되어도 데이터를 유지할 수 있음을 확인했다.
+13. 바인드 마운트를 사용하면 호스트 파일 변경이 컨테이너 내부에 즉시 반영됨을 확인했다.
+14. Linux 컨테이너 내부에서 `chmod`를 사용해 파일과 디렉터리 권한을 변경할 수 있다.
+15. `644`, `755`, `700` 같은 숫자 권한의 의미를 이해했다.
+16. Windows PowerShell 명령어와 Linux shell 명령어의 차이를 구분할 수 있다.
+17. 포트 충돌, 컨테이너 이름 충돌, Docker 데몬 미실행 등의 문제를 해결할 수 있다.
 
 ---
 
 ## 27. 실습 결과 요약
 
-이번 실습에서는 Docker와 Git을 이용해 개발 환경을 구성하고, 컨테이너 기반 실행 환경을 직접 확인했다.
+이번 실습에서는 Docker와 Git을 이용해 기본 개발 환경을 구성하고, 컨테이너 기반 실행 환경을 직접 확인했다.
 
-Dockerfile을 작성하여 nginx 기반 이미지를 만들고, 해당 이미지를 컨테이너로 실행했다.  
-또한 `-p 8080:80` 옵션을 사용하여 호스트의 8080 포트와 컨테이너 내부의 80 포트를 연결했다.
+먼저 GitHub 저장소를 로컬 프로젝트와 연결하고, 실습 과정에서 생성하거나 수정한 파일을 Git으로 관리했다.  
+수정된 파일은 `git add`, `git commit`, `git push` 명령어를 사용하여 GitHub 원격 저장소에 업로드했다.
 
-브라우저 또는 `curl.exe` 명령어로 `http://localhost:8080`에 접속하여 `site/index.html`의 내용이 정상적으로 출력되는 것을 확인했다.
+Docker 실습에서는 `Dockerfile`을 작성하여 nginx 기반의 `my-workstation` 이미지를 빌드했다.  
+이후 해당 이미지를 컨테이너로 실행하고, `-p 8080:80` 옵션을 사용하여 Windows 호스트의 8080 포트와 컨테이너 내부의 80 포트를 연결했다.
 
-Docker 볼륨 실습에서는 컨테이너를 삭제해도 볼륨에 저장된 데이터가 유지되는 것을 확인했다.  
-바인드 마운트 실습에서는 호스트의 `site/index.html` 파일을 수정하면 nginx 컨테이너의 웹 응답도 즉시 변경되는 것을 확인했다.
+브라우저 또는 `curl.exe` 명령어로 다음 주소에 접속했다.
 
-권한 실습에서는 Ubuntu 컨테이너 내부에서 `chmod` 명령어를 사용하여 파일과 디렉터리 권한을 변경했다.  
-이를 통해 Linux의 `rwx` 권한 구조와 `644`, `755`, `700` 같은 숫자 권한의 의미를 이해했다.
+```text
+http://localhost:8080
+```
 
-마지막으로 Git을 이용하여 실습 결과를 커밋하고 GitHub 원격 저장소에 업로드했다.
+그 결과 `site/index.html`의 내용이 정상적으로 출력되는 것을 확인했다.
+
+```html
+<h1>Hello from Docker</h1>
+```
+
+Docker 볼륨 실습에서는 `mission-volume`을 생성하고, 컨테이너 안에서 볼륨에 파일을 저장했다.  
+컨테이너를 삭제한 뒤에도 볼륨에 저장된 데이터가 유지되는 것을 확인하여 Docker 볼륨의 영속성을 이해했다.
+
+바인드 마운트 실습에서는 호스트의 `site` 폴더를 nginx 컨테이너의 웹 루트 디렉터리에 연결했다.  
+호스트에서 `site/index.html` 파일을 수정하면 컨테이너의 웹 응답도 즉시 변경되는 것을 확인했다.
+
+권한 실습에서는 Ubuntu 컨테이너 내부에서 `chmod` 명령어를 사용했다.  
+파일 권한을 `644`, `755`로 변경하고, 디렉터리 권한을 `755`, `700`으로 변경하면서 Linux의 `rwx` 권한 구조를 확인했다.
+
+마지막으로 실습 결과를 README.md에 정리하고 GitHub에 업로드하여 Docker/Git 실습 보고서를 완성했다.
 
 ---
 
 ## 28. 느낀 점
 
-이번 실습을 통해 Docker의 이미지와 컨테이너 개념을 더 명확히 이해할 수 있었다.  
-처음에는 이미지와 컨테이너가 비슷하게 느껴졌지만, 실습을 하면서 이미지는 실행을 위한 템플릿이고 컨테이너는 실제 실행된 환경이라는 차이를 알게 되었다.
+이번 실습을 통해 Docker의 이미지와 컨테이너 개념을 더 명확히 이해할 수 있었다.
 
-또한 포트 매핑을 직접 사용해 보면서 컨테이너 내부 서비스가 호스트에서 바로 보이는 것이 아니라, `-p` 옵션을 통해 연결해야 접근할 수 있다는 점을 이해했다.
+처음에는 이미지와 컨테이너가 비슷하게 느껴졌지만, 실습을 진행하면서 이미지는 실행을 위한 템플릿이고 컨테이너는 이미지를 기반으로 실제 실행된 환경이라는 차이를 알게 되었다.
+
+또한 포트 매핑을 직접 사용해 보면서 컨테이너 내부 서비스가 호스트에서 바로 접근되는 것이 아니라, `-p` 옵션을 통해 호스트 포트와 컨테이너 포트를 연결해야 접근할 수 있다는 점을 이해했다.
 
 Docker 볼륨과 바인드 마운트의 차이도 실습을 통해 확인했다.  
 볼륨은 컨테이너가 삭제되어도 데이터를 유지하기 위한 목적이고, 바인드 마운트는 호스트의 파일을 컨테이너와 실시간으로 공유하기 위한 목적이라는 점을 알게 되었다.
 
+Linux 권한 실습에서는 `rwx` 권한과 숫자 권한의 관계를 직접 확인할 수 있었다.  
+특히 `chmod 755`, `chmod 700`과 같은 명령어를 사용하면서 소유자, 그룹, 기타 사용자 권한이 어떻게 달라지는지 이해할 수 있었다.
+
 Git 실습에서는 파일을 수정한 뒤 `add`, `commit`, `push` 과정을 거쳐 GitHub에 반영하는 흐름을 다시 확인했다.  
-앞으로 Docker와 Git을 함께 사용하면 개발 환경을 더 쉽게 관리할 수 있을 것 같다.
+앞으로 Docker와 Git을 함께 사용하면 개발 환경을 더 체계적으로 관리할 수 있을 것 같다.
 
 ---
 
@@ -1275,7 +1367,8 @@ Git 실습에서는 파일을 수정한 뒤 `add`, `commit`, `push` 과정을 �
 
 실습 결과, 다음 작업을 수행할 수 있게 되었다.
 
-- Git 저장소 클론 및 원격 저장소 연결 확인
+- Git 저장소 상태 확인
+- Git 원격 저장소 연결 확인
 - Git 커밋 및 GitHub 업로드
 - Docker 설치 및 데몬 상태 확인
 - Dockerfile 작성
@@ -1284,7 +1377,7 @@ Git 실습에서는 파일을 수정한 뒤 `add`, `commit`, `push` 과정을 �
 - nginx 웹 서버 실행
 - 포트 매핑을 통한 웹 접속
 - Docker 볼륨을 이용한 데이터 영속성 확인
-- 바인드 마운트를 통한 파일 공유 확인
+- 바인드 마운트를 통한 호스트-컨테이너 파일 공유 확인
 - Linux 파일 및 디렉터리 권한 변경
 - Docker 관련 오류 상황 해결
 
