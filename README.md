@@ -1,902 +1,330 @@
-# E1-1 미션 2: 개발 워크스테이션 구축
+# kodisei-E1-1
 
-## 개요
+## 1. 프로젝트 개요
 
-Docker를 사용하여 Ubuntu 기반 개발 워크스테이션 환경을 구축하고, 컨테이너 실행, 접속, 권한 변경, 볼륨 영속성, Git 설정 확인 등을 실습했다.
+이 저장소는 Docker를 이용해 정적 웹 페이지를 컨테이너로 실행하는 실습 프로젝트이다.
 
-이번 미션에서는 다음 내용을 확인했다.
+`nginx:alpine` 이미지를 기반으로 Docker 이미지를 만들고, `site/` 폴더 안의 `index.html` 파일을 컨테이너 내부의 Nginx 기본 웹 문서 경로로 복사하여 웹 페이지를 서비스한다.
 
-- GitHub 저장소 생성 및 Git 설정 확인
+이 프로젝트를 통해 다음 내용을 학습했다.
+
+- Dockerfile 작성
 - Docker 이미지 빌드
-- Docker 컨테이너 실행 및 접속
-- Ubuntu 컨테이너 내부 명령어 실행
-- 파일 및 디렉터리 권한 확인과 변경
-- Docker 볼륨을 이용한 데이터 영속성 확인
-- PowerShell과 Linux 명령어 차이 확인
-- 실습 중 발생한 오류 트러블슈팅
-
-작성자 정보는 개인정보 보호를 위해 실명 대신 `작업자`로 표기한다.
+- Docker 컨테이너 실행
+- 포트 매핑
+- 웹 서버 응답 확인
+- GitHub 원격 저장소 연결 확인
+- Docker 명령어 오류 해결
 
 ---
 
-## 작업 환경
+## 2. 저장소 정보
 
-| 항목 | 내용 |
-|---|---|
-| 운영체제 | Windows |
-| 터미널 | PowerShell |
-| 컨테이너 환경 | Docker Desktop |
-| 베이스 이미지 | Ubuntu 22.04 |
-| 작업 디렉터리 | `D:\kodisei-E1-1` |
-| 컨테이너 내부 작업 경로 | `/app` |
-
----
-
-## GitHub 저장소
-
-GitHub에 미션용 저장소를 생성하고 로컬 프로젝트와 연결했다.
+GitHub 원격 저장소 주소는 다음과 같다.
 
 ```text
-https://github.com/사용자명/저장소명.git
+https://github.com/kodisei889-dev/kodisei-E1-1.git
 ```
 
-> 실제 README에는 개인정보 보호를 위해 사용자명, 이메일, 저장소 주소를 필요한 경우 마스킹한다.
+원격 저장소 연결 확인 결과는 다음과 같다.
+
+```text
+origin  https://github.com/kodisei889-dev/kodisei-E1-1.git (fetch)
+origin  https://github.com/kodisei889-dev/kodisei-E1-1.git (push)
+```
+
+이를 통해 로컬 저장소가 GitHub 원격 저장소와 정상적으로 연결되어 있음을 확인했다.
 
 ---
 
-## Dockerfile 작성
+## 3. 개발 및 실행 환경
 
-Ubuntu 22.04를 기반으로 개발 워크스테이션 이미지를 만들기 위해 Dockerfile을 작성했다.
+Docker 버전 확인 결과는 다음과 같다.
+
+```text
+Docker version 29.9.2, build a82e528
+```
+
+Docker 정보 확인 결과 Docker Desktop 환경에서 실행 중임을 확인했다.
+
+```text
+Client:
+ Version:    29.9.2
+ Context:    desktop-linux
+ Debug Mode: false
+```
+
+```text
+Server:
+ Containers: 4
+  Running: 1
+  Paused: 0
+  Stopped: 3
+ Images: 4
+ Server Version: 29.9.2
+ Operating System: Docker Desktop
+ OSType: linux
+ Architecture: x86_64
+ CPUs: 24
+ Total Memory: 15.25GiB
+```
+
+실행 환경을 정리하면 다음과 같다.
+
+```text
+Docker Desktop 기반 Linux 컨테이너 환경에서 실습을 진행했다.
+```
+
+---
+
+## 4. 프로젝트 디렉터리 구조
+
+`tree /F` 명령어 실행 결과는 다음과 같다.
+
+```text
+D:\kodisei-E1-1>tree /F
+폴더 PATH의 목록입니다.
+볼륨 일련 번호는 08C4-5815입니다.
+D:.
+│  Dockerfile
+│  localhost 스크린샷.png
+│  permission_test.txt
+│  README.md
+│  
+├─evidence
+├─permission_dir_test
+└─site
+        index.html
+```
+
+프로젝트 구조를 정리하면 다음과 같다.
+
+```text
+kodisei-E1-1/
+├─ Dockerfile
+├─ localhost 스크린샷.png
+├─ permission_test.txt
+├─ README.md
+├─ evidence/
+├─ permission_dir_test/
+└─ site/
+   └─ index.html
+```
+
+각 파일과 폴더의 역할은 다음과 같다.
+
+```text
+Dockerfile
+- Docker 이미지를 만들기 위한 설정 파일
+
+site/index.html
+- Nginx 웹 서버가 제공할 정적 HTML 파일
+
+localhost 스크린샷.png
+- localhost 접속 결과를 캡처한 이미지 파일
+
+permission_test.txt
+- 권한 관련 실습에 사용한 테스트 파일
+
+permission_dir_test/
+- 권한 관련 실습에 사용한 테스트 디렉터리
+
+evidence/
+- 실습 결과나 증빙 자료를 저장하기 위한 폴더
+```
+
+---
+
+## 5. Dockerfile 내용
+
+실제 작성한 `Dockerfile` 내용은 다음과 같다.
 
 ```dockerfile
-FROM ubuntu:22.04
+FROM nginx:alpine
 
-RUN apt-get update && apt-get install -y \
-    nginx \
-    git \
-    curl \
-    vim \
-    && rm -rf /var/lib/apt/lists/*
+COPY site/ /usr/share/nginx/html/
 
-WORKDIR /app
+EXPOSE 80
 
-CMD ["/bin/bash"]
+CMD ["nginx", "-g", "daemon off;"]
 ```
 
-### Dockerfile 설명
+각 명령어의 의미는 다음과 같다.
 
-| 명령어 | 의미 |
-|---|---|
-| `FROM ubuntu:22.04` | Ubuntu 22.04 이미지를 기반으로 사용 |
-| `RUN apt-get update` | 패키지 목록 업데이트 |
-| `apt-get install -y nginx git curl vim` | nginx, git, curl, vim 설치 |
-| `WORKDIR /app` | 컨테이너 내부 기본 작업 디렉터리를 `/app`으로 설정 |
-| `CMD ["/bin/bash"]` | 컨테이너 실행 시 bash 셸 실행 |
+```text
+FROM nginx:alpine
+- nginx:alpine 이미지를 기반 이미지로 사용한다.
+- Nginx가 설치된 가벼운 Alpine 기반 이미지를 사용한다.
+
+COPY site/ /usr/share/nginx/html/
+- 로컬의 site/ 폴더 내용을 컨테이너 내부의 /usr/share/nginx/html/ 경로로 복사한다.
+- 이 경로는 Nginx의 기본 웹 문서 경로이다.
+
+EXPOSE 80
+- 컨테이너 내부에서 80번 포트를 사용한다는 것을 나타낸다.
+- 실제 외부 접속은 docker run 명령의 -p 옵션으로 연결한다.
+
+CMD ["nginx", "-g", "daemon off;"]
+- 컨테이너가 시작될 때 Nginx를 실행한다.
+- daemon off 옵션을 사용하여 Nginx가 포그라운드에서 실행되도록 한다.
+- 이를 통해 컨테이너가 바로 종료되지 않고 계속 실행된다.
+```
 
 ---
 
-## Docker 이미지 빌드
+## 6. 이미지 빌드
 
-작성한 Dockerfile을 사용하여 `my-workstation` 이미지를 빌드했다.
+Docker 이미지를 빌드하기 위해 다음 명령어를 사용했다.
 
-```powershell
+```bash
 docker build -t my-workstation .
 ```
 
-이미지 빌드 후 Docker 이미지 목록을 확인했다.
-
-```powershell
-docker images
-```
-
-이를 통해 `my-workstation` 이미지가 생성되었음을 확인했다.
-
----
-
-## Docker 컨테이너 실행
-
-빌드한 이미지를 기반으로 컨테이너를 실행했다.
-
-```powershell
-docker run -dit --name workstation-container -p 8080:80 -v ${PWD}:/app my-workstation
-```
-
-### 옵션 설명
-
-| 옵션 | 의미 |
-|---|---|
-| `-d` | 백그라운드 실행 |
-| `-i` | 표준 입력 유지 |
-| `-t` | 터미널 할당 |
-| `--name workstation-container` | 컨테이너 이름 지정 |
-| `-p 8080:80` | 호스트의 8080 포트를 컨테이너의 80 포트와 연결 |
-| `-v ${PWD}:/app` | 현재 프로젝트 폴더를 컨테이너 내부 `/app`에 마운트 |
-| `my-workstation` | 실행할 이미지 이름 |
-
----
-
-## 실행 중인 컨테이너 확인
-
-실행 중인 컨테이너를 확인했다.
-
-```powershell
-docker ps
-```
-
-전체 컨테이너 목록은 다음 명령어로 확인했다.
-
-```powershell
-docker ps -a
-```
-
-실행 결과 예시는 다음과 같다.
+빌드 결과는 다음과 같다.
 
 ```text
-CONTAINER ID   IMAGE            COMMAND                 CREATED          STATUS                     PORTS                                     NAMES
-a9b23f3b5508   hello-world      "/hello"                3 minutes ago    Exited (0) 3 minutes ago                                             vigilant_archimedes
-9a7c5d86a7b5   my-workstation   "/bin/bash"             39 minutes ago   Up 38 minutes              0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   workstation-container
-9c98ce81e8a6   my-attend-app    "python -u attend.py"   3 hours ago      Exited (0) 3 hours ago                                               sad_allen
-d7520c21b236   my-attend-app    "python -u attend.py"   3 hours ago      Exited (0) 3 hours ago                                               vigorous_ganguly
+[+] Building 1.9s (7/7) FINISHED                   docker:desktop-linux
+ => [internal] load build definition from Dockerfile               0.0s
+ => => transferring dockerfile: 142B                               0.0s
+ => [internal] load metadata for docker.io/library/nginx:alpine    1.7s
+ => [internal] load .dockerignore                                  0.0s
+ => => transferring context: 2B                                    0.0s
+ => [internal] load build context                                  0.0s
+ => => transferring context: 61B                                   0.0s
+ => [1/2] FROM docker.io/library/nginx:alpine@sha256:785835ea65db  0.0s
+ => => resolve docker.io/library/nginx:alpine@sha256:785835ea65db  0.0s
+ => CACHED [2/2] COPY site/ /usr/share/nginx/html/                 0.0s
+ => exporting to image                                             0.1s
+ => => exporting layers                                            0.0s
+ => => exporting manifest sha256:3e0d3c35329b9920e89c014304a6ed96  0.0s
+ => => exporting config sha256:e3318200ee665de05cac9b41c62cf6ecab  0.0s
+ => => exporting attestation manifest sha256:a471b624dbcc4c187d1a  0.0s
+ => => exporting manifest list sha256:5f43a69f849847a69a628c594be  0.0s
+ => => naming to docker.io/library/my-workstation:latest           0.0s
+ => => unpacking to docker.io/library/my-workstation:latest        0.0s
 ```
 
-`workstation-container` 컨테이너가 실행 중이며, 호스트의 `8080` 포트가 컨테이너의 `80` 포트와 연결되어 있음을 확인했다.
-
----
-
-## Docker 버전 및 정보 확인
-
-Docker 설치 상태와 정보를 확인하기 위해 다음 명령어를 실행했다.
-
-```powershell
-docker --version
-```
-
-```powershell
-docker info
-```
-
-이를 통해 Docker가 정상적으로 설치되어 있고, 현재 환경에서 컨테이너를 실행할 수 있음을 확인했다.
-
----
-
-## hello-world 컨테이너 실행
-
-Docker가 정상적으로 동작하는지 확인하기 위해 `hello-world` 이미지를 실행했다.
-
-```powershell
-docker run hello-world
-```
-
-이후 전체 컨테이너 목록에서 `hello-world` 컨테이너가 실행 후 종료된 것을 확인했다.
-
-```powershell
-docker ps -a
-```
-
-`hello-world` 컨테이너의 상태가 `Exited (0)`으로 표시되어 정상 실행 후 종료되었음을 확인했다.
-
----
-
-## Ubuntu 테스트 컨테이너 실행
-
-Ubuntu 22.04 테스트 컨테이너를 실행하고 내부에 접속했다.
-
-```powershell
-docker run -it --name ubuntu-test ubuntu:22.04 bash
-```
-
-컨테이너 내부에서 현재 위치를 확인했다.
-
-```bash
-pwd
-```
-
-실행 결과는 다음과 같다.
+빌드 결과 해석은 다음과 같다.
 
 ```text
-/
-```
-
-루트 디렉터리의 파일과 디렉터리를 확인했다.
-
-```bash
-ls
-```
-
-실행 결과는 다음과 같다.
-
-```text
-bin   dev  home  lib32  libx32  mnt  proc  run   srv  tmp  var
-boot  etc  lib   lib64  media   opt  root  sbin  sys  usr
-```
-
-문자열 출력 명령어도 실행했다.
-
-```bash
-echo "hello ubuntu container"
-```
-
-실행 결과는 다음과 같다.
-
-```text
-hello ubuntu container
-```
-
-작업 완료 후 컨테이너에서 나왔다.
-
-```bash
-exit
+- Dockerfile을 정상적으로 읽었다.
+- nginx:alpine 이미지를 기반 이미지로 사용했다.
+- site/ 폴더가 컨테이너 내부의 /usr/share/nginx/html/ 경로로 복사되었다.
+- 최종적으로 my-workstation:latest 이미지가 생성되었다.
 ```
 
 ---
 
-## 테스트 컨테이너 삭제
+## 7. 생성된 Docker 이미지
 
-Ubuntu 테스트 컨테이너 사용 후 다음 명령어로 컨테이너를 삭제했다.
-
-```powershell
-docker rm ubuntu-test
-```
-
-실행 결과는 다음과 같다.
+빌드 결과 생성된 이미지 이름은 다음과 같다.
 
 ```text
-ubuntu-test
+my-workstation:latest
 ```
 
-이를 통해 `ubuntu-test` 컨테이너가 정상적으로 삭제되었음을 확인했다.
+이미지 이름의 의미는 다음과 같다.
 
----
+```text
+my-workstation
+- docker build 명령어에서 -t 옵션으로 지정한 이미지 이름이다.
 
-## 컨테이너 로그 확인
-
-`workstation-container`의 로그를 확인했다.
-
-```powershell
-docker logs workstation-container
+latest
+- 태그를 따로 지정하지 않았을 때 기본으로 붙는 태그이다.
 ```
 
-해당 명령어는 정상적으로 실행되었지만 별도의 출력 로그는 표시되지 않았다.
-
-이는 컨테이너에서 표준 출력으로 남긴 로그가 없을 경우 발생할 수 있다.
-
----
-
-## 파일 권한 실습
-
-컨테이너 내부 Linux 환경에서 파일 권한을 확인하고 변경했다.
-
-예시 파일을 생성했다.
+사용한 빌드 명령어는 다음과 같다.
 
 ```bash
-touch permission_test.txt
-```
-
-파일 권한을 확인했다.
-
-```bash
-ls -l permission_test.txt
-```
-
-파일 권한을 `644`로 변경했다.
-
-```bash
-chmod 644 permission_test.txt
-ls -l permission_test.txt
-```
-
-파일 권한을 `755`로 변경했다.
-
-```bash
-chmod 755 permission_test.txt
-ls -l permission_test.txt
-```
-
-### 파일 권한 의미
-
-| 권한 | 표시 예시 | 의미 |
-|---|---|---|
-| `644` | `-rw-r--r--` | 소유자는 읽기/쓰기 가능, 그룹과 기타 사용자는 읽기만 가능 |
-| `755` | `-rwxr-xr-x` | 소유자는 읽기/쓰기/실행 가능, 그룹과 기타 사용자는 읽기/실행 가능 |
-
-### 권한 표기법
-
-예를 들어 다음과 같은 권한이 있다고 할 때,
-
-```text
--rwxr-xr-x
-```
-
-각 부분의 의미는 다음과 같다.
-
-```text
-- rwx r-x r-x
-```
-
-| 위치 | 의미 |
-|---|---|
-| `-` | 일반 파일 |
-| `rwx` | 소유자 권한 |
-| `r-x` | 그룹 권한 |
-| `r-x` | 기타 사용자 권한 |
-
-권한 문자의 의미는 다음과 같다.
-
-| 문자 | 의미 |
-|---|---|
-| `r` | 읽기 권한 |
-| `w` | 쓰기 권한 |
-| `x` | 실행 권한 |
-| `-` | 해당 권한 없음 |
-
----
-
-## 디렉터리 권한 실습
-
-PowerShell에서는 Linux 명령어인 `ls -ld`가 동작하지 않기 때문에 Docker 컨테이너 내부에서 권한 실습을 진행했다.
-
-먼저 실행 중인 컨테이너에 접속했다.
-
-```powershell
-docker exec -it workstation-container bash
-```
-
-컨테이너 접속 후 `/workspace` 경로로 이동을 시도했다.
-
-```bash
-cd /workspace
-```
-
-하지만 다음 오류가 발생했다.
-
-```text
-bash: cd: /workspace: No such file or directory
-```
-
-현재 컨테이너의 작업 경로는 `/app`이었으므로 `/app` 경로에서 실습을 진행했다.
-
-```bash
-cd /app
-```
-
-디렉터리 권한을 확인했다.
-
-```bash
-ls -ld permission_dir_test
-```
-
-실행 결과는 다음과 같다.
-
-```text
-drwxrwxrwx 1 root root 4096 Nov  3 05:25 permission_dir_test
-```
-
-초기 권한은 `777` 형태로 확인되었다.
-
-이후 디렉터리 권한을 `755`로 변경했다.
-
-```bash
-chmod 755 permission_dir_test
-ls -ld permission_dir_test
-```
-
-실행 결과는 다음과 같다.
-
-```text
-drwxr-xr-x 1 root root 4096 Nov  3 05:25 permission_dir_test
-```
-
-다시 디렉터리 권한을 `700`으로 변경했다.
-
-```bash
-chmod 700 permission_dir_test
-ls -ld permission_dir_test
-```
-
-실행 결과는 다음과 같다.
-
-```text
-drwx------ 1 root root 4096 Nov  3 05:25 permission_dir_test
-```
-
-이를 통해 Docker 컨테이너 내부 Linux 환경에서 디렉터리 권한을 확인하고 변경하는 방법을 실습했다.
-
-### 디렉터리 권한 변화 정리
-
-| 권한 | 표시 | 의미 |
-|---|---|---|
-| `777` | `drwxrwxrwx` | 소유자, 그룹, 기타 사용자 모두 읽기/쓰기/실행 가능 |
-| `755` | `drwxr-xr-x` | 소유자는 모든 권한, 그룹과 기타 사용자는 읽기/실행 가능 |
-| `700` | `drwx------` | 소유자만 읽기/쓰기/실행 가능 |
-
-### 디렉터리 권한 표기 의미
-
-예를 들어 다음 권한을 보면,
-
-```text
-drwxr-xr-x
-```
-
-각 부분의 의미는 다음과 같다.
-
-```text
-d rwx r-x r-x
-```
-
-| 위치 | 의미 |
-|---|---|
-| `d` | 디렉터리 |
-| `rwx` | 소유자 권한: 읽기, 쓰기, 실행 가능 |
-| `r-x` | 그룹 권한: 읽기, 실행 가능 |
-| `r-x` | 기타 사용자 권한: 읽기, 실행 가능 |
-
----
-
-## Docker 볼륨 영속성 확인
-
-Docker 볼륨이 컨테이너 삭제 이후에도 데이터를 유지하는지 확인했다.
-
-먼저 Docker 볼륨을 생성했다.
-
-```powershell
-docker volume create mission-volume
-```
-
-실행 결과는 다음과 같다.
-
-```text
-mission-volume
-```
-
-생성한 볼륨을 컨테이너의 `/data` 경로에 마운트하고 테스트 파일을 생성했다.
-
-```powershell
-docker run --name volume-test -v mission-volume:/data ubuntu:22.04 bash -c "echo persistent-data > /data/test.txt"
-```
-
-이후 테스트 컨테이너를 삭제했다.
-
-```powershell
-docker rm volume-test
-```
-
-실행 결과는 다음과 같다.
-
-```text
-volume-test
-```
-
-컨테이너 삭제 후에도 볼륨에 저장된 데이터가 유지되는지 확인했다.
-
-```powershell
-docker run --rm -v mission-volume:/data ubuntu:22.04 cat /data/test.txt
-```
-
-실행 결과는 다음과 같다.
-
-```text
-persistent-data
-```
-
-이를 통해 컨테이너가 삭제되어도 Docker 볼륨에 저장된 데이터는 유지됨을 확인했다.
-
----
-
-## Git 설정 확인
-
-Git 설정을 확인하기 위해 다음 명령어를 실행했다.
-
-```powershell
-git config --list
-```
-
-주요 설정 일부는 다음과 같다.
-
-```text
-core.autocrlf=true
-init.defaultbranch=master
-core.repositoryformatversion=0
-core.filemode=false
-core.bare=false
-core.logallrefupdates=true
-core.ignorecase=true
-remote.origin.url=https://github.com/사용자명/저장소명.git
-remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
-branch.main.remote=origin
-branch.main.merge=refs/heads/main
-branch.main.vscode-merge-base=origin/main
-```
-
-Git 저장소가 원격 저장소와 연결되어 있으며, 현재 브랜치가 `main` 브랜치와 연결되어 있음을 확인했다.
-
-개인정보 보호를 위해 실제 사용자명, 이메일, 저장소 주소는 README에 직접 노출하지 않고 필요한 경우 마스킹하여 기록한다.
-
----
-
-## PowerShell과 Linux 명령어 차이
-
-이번 실습에서 PowerShell과 Linux 명령어가 다르게 동작할 수 있음을 확인했다.
-
-PowerShell에서 다음 명령어를 실행했다.
-
-```powershell
-ls -ld permission_dir_test
-```
-
-하지만 다음 오류가 발생했다.
-
-```text
-Get-ChildItem : 매개 변수 이름 'ld'과(와) 일치하는 매개 변수를 찾을 수 없습니다.
-```
-
-이는 PowerShell의 `ls`가 Linux의 `ls` 명령어가 아니라 PowerShell 명령어인 `Get-ChildItem`의 별칭이기 때문이다.
-
-따라서 Linux 옵션인 `-ld`를 PowerShell에서는 그대로 사용할 수 없다.
-
-Linux 방식의 권한 확인 명령어는 Docker 컨테이너 내부에서 실행해야 한다.
-
-```powershell
-docker exec -it workstation-container bash
-```
-
-컨테이너 내부에서 다음 명령어를 실행했다.
-
-```bash
-cd /app
-ls -ld permission_dir_test
-```
-
-실행 결과는 정상적으로 출력되었다.
-
-```text
-drwxrwxrwx 1 root root 4096 Nov  3 05:25 permission_dir_test
-```
-
-이를 통해 운영체제와 셸 환경에 따라 같은 명령어처럼 보여도 실제 동작 방식이 다를 수 있음을 확인했다.
-
----
-
-## 트러블슈팅 1: PowerShell에서 `ls -ld` 명령어 오류
-
-### 문제 상황
-
-PowerShell에서 디렉터리 권한을 확인하기 위해 다음 명령어를 실행했다.
-
-```powershell
-ls -ld permission_dir_test
-```
-
-하지만 다음 오류가 발생했다.
-
-```text
-Get-ChildItem : 매개 변수 이름 'ld'과(와) 일치하는 매개 변수를 찾을 수 없습니다.
-위치 줄:1 문자:4
-+ ls -ld permission_dir_test
-+    ~~~
-    + CategoryInfo          : InvalidArgument: (:) [Get-ChildItem], ParameterBindingException
-    + FullyQualifiedErrorId : NamedParameterNotFound,Microsoft.PowerShell.Commands.GetChildItemCommand
-```
-
-### 원인
-
-`ls -ld`는 Linux 환경에서 사용하는 명령어이다.
-
-PowerShell의 `ls`는 Linux의 `ls`가 아니라 `Get-ChildItem`의 별칭이다.  
-따라서 PowerShell은 Linux 옵션인 `-ld`를 인식하지 못한다.
-
-### 해결 방법
-
-Docker 컨테이너 내부의 Linux 환경에 접속한 뒤 명령어를 실행했다.
-
-```powershell
-docker exec -it workstation-container bash
-```
-
-컨테이너 내부에서 실제 작업 경로인 `/app`으로 이동했다.
-
-```bash
-cd /app
-```
-
-이후 Linux 명령어를 실행했다.
-
-```bash
-ls -ld permission_dir_test
-```
-
-실행 결과는 다음과 같다.
-
-```text
-drwxrwxrwx 1 root root 4096 Nov  3 05:25 permission_dir_test
-```
-
-### 정리
-
-PowerShell에서는 Linux 전용 옵션을 그대로 사용할 수 없다.  
-Linux 권한 확인 명령어는 Docker 컨테이너 내부 Linux 환경에서 실행해야 한다.
-
----
-
-## 트러블슈팅 2: `/workspace` 경로가 존재하지 않는 문제
-
-### 문제 상황
-
-Docker 컨테이너 내부에 접속한 뒤 프로젝트 경로로 예상한 `/workspace`로 이동하려고 했다.
-
-```bash
-cd /workspace
-```
-
-하지만 다음 오류가 발생했다.
-
-```text
-bash: cd: /workspace: No such file or directory
-```
-
-### 원인
-
-컨테이너 실행 시 프로젝트 디렉터리가 `/workspace`가 아니라 `/app` 경로에 마운트되어 있었다.
-
-컨테이너 접속 직후 프롬프트도 다음과 같이 표시되었다.
-
-```text
-root@9a7c5d86a7b5:/app#
-```
-
-이를 통해 현재 작업 경로가 `/app`임을 확인할 수 있었다.
-
-### 해결 방법
-
-`/workspace` 대신 `/app` 경로에서 실습을 진행했다.
-
-```bash
-cd /app
-ls -ld permission_dir_test
-```
-
-### 정리
-
-컨테이너마다 프로젝트 폴더가 마운트되는 위치는 다를 수 있다.  
-경로가 없다는 오류가 발생하면 현재 위치를 확인해야 한다.
-
-```bash
-pwd
-ls
-```
-
-이번 실습에서는 실제 작업 경로가 `/app`이었다.
-
----
-
-## 트러블슈팅 3: PowerShell에서 `docker inspect --format` 템플릿 오류
-
-### 문제 상황
-
-컨테이너의 마운트 경로를 확인하기 위해 다음 명령어를 실행했다.
-
-```powershell
-docker inspect workstation-container --format '{{range .Mounts}}{{println .Source "->" .Destination}}{{end}}'
-```
-
-하지만 다음 오류가 발생했다.
-
-```text
-template parsing error: template: :1: illegal number syntax: "-"
-```
-
-### 원인
-
-PowerShell 환경에서 Docker의 `--format` 템플릿 문자열 안에 있는 따옴표와 기호가 예상과 다르게 해석되어 오류가 발생한 것으로 보인다.
-
-특히 `"->"`처럼 템플릿 내부에 따옴표가 포함된 문자열은 PowerShell에서 처리될 때 문제가 생길 수 있다.
-
-### 해결 방법
-
-PowerShell에서는 템플릿 문자열을 조금 더 단순하게 작성할 수 있다.
-
-```powershell
-docker inspect workstation-container --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}"
-```
-
-또는 전체 inspect 결과를 출력한 뒤 `Mounts` 항목을 직접 확인할 수도 있다.
-
-```powershell
-docker inspect workstation-container
-```
-
-### 정리
-
-Docker의 `--format` 옵션은 터미널 환경에 따라 따옴표 처리 방식이 다를 수 있다.  
-PowerShell에서는 템플릿 문자열을 단순하게 작성하는 것이 좋다.
-
----
-
-## 최종 확인 명령어 모음
-
-이번 미션에서 사용한 주요 명령어는 다음과 같다.
-
-### Docker 이미지 빌드
-
-```powershell
 docker build -t my-workstation .
 ```
 
-### 컨테이너 실행
-
-```powershell
-docker run -dit --name workstation-container -p 8080:80 -v ${PWD}:/app my-workstation
-```
-
-### 실행 중인 컨테이너 확인
-
-```powershell
-docker ps
-```
-
-### 전체 컨테이너 확인
-
-```powershell
-docker ps -a
-```
-
-### 컨테이너 접속
-
-```powershell
-docker exec -it workstation-container bash
-```
-
-### 컨테이너 로그 확인
-
-```powershell
-docker logs workstation-container
-```
-
-### Docker 이미지 목록 확인
-
-```powershell
-docker images
-```
-
-### Docker 버전 확인
-
-```powershell
-docker --version
-```
-
-### Docker 정보 확인
-
-```powershell
-docker info
-```
-
-### hello-world 실행
-
-```powershell
-docker run hello-world
-```
-
-### 볼륨 생성
-
-```powershell
-docker volume create mission-volume
-```
-
-### 볼륨 데이터 생성
-
-```powershell
-docker run --name volume-test -v mission-volume:/data ubuntu:22.04 bash -c "echo persistent-data > /data/test.txt"
-```
-
-### 볼륨 테스트 컨테이너 삭제
-
-```powershell
-docker rm volume-test
-```
-
-### 볼륨 데이터 확인
-
-```powershell
-docker run --rm -v mission-volume:/data ubuntu:22.04 cat /data/test.txt
-```
-
 ---
 
-## 학습한 내용
+## 8. 컨테이너 실행
 
-이번 미션을 통해 다음 내용을 학습했다.
-
-1. Dockerfile을 작성하여 Ubuntu 기반 이미지를 만들 수 있다.
-2. Docker 이미지를 빌드하고 컨테이너를 실행할 수 있다.
-3. `docker ps`, `docker ps -a`, `docker images` 명령어로 Docker 상태를 확인할 수 있다.
-4. `docker exec -it` 명령어로 실행 중인 컨테이너 내부에 접속할 수 있다.
-5. PowerShell과 Linux 명령어는 같은 이름처럼 보여도 동작 방식이 다를 수 있다.
-6. Linux의 파일 권한과 디렉터리 권한을 `ls -l`, `ls -ld`, `chmod`로 확인하고 변경할 수 있다.
-7. Docker 볼륨을 사용하면 컨테이너가 삭제되어도 데이터를 유지할 수 있다.
-8. 컨테이너 내부 작업 경로와 마운트 경로를 확인하는 것이 중요하다.
-9. Git 설정을 확인하고 원격 저장소 연결 상태를 점검할 수 있다.
-10. 실습 중 발생한 오류를 트러블슈팅 문서로 정리할 수 있다.
-
----
-
-## 최종 결과
-
-Docker 기반 개발 워크스테이션 환경 구축을 완료했다.
-
-최종적으로 다음 항목을 확인했다.
-
-- Ubuntu 22.04 기반 Docker 이미지 빌드 완료
-- `my-workstation` 이미지 생성 확인
-- `workstation-container` 컨테이너 실행 확인
-- 호스트 `8080` 포트와 컨테이너 `80` 포트 연결 확인
-- 현재 프로젝트 폴더를 컨테이너 내부 `/app`에 마운트
-- 컨테이너 내부 접속 성공
-- 파일 권한 변경 실습 완료
-- 디렉터리 권한 변경 실습 완료
-- Docker 볼륨 영속성 검증 완료
-- Docker 기본 명령어 실행 확인
-- Git 설정 및 원격 저장소 연결 확인
-- PowerShell과 Linux 명령어 차이 트러블슈팅 완료
-
----
-
-## 마무리
-
-이번 실습에서는 Docker를 활용해 Ubuntu 기반 개발 워크스테이션을 구축하고, 컨테이너 내부에서 Linux 명령어와 권한 변경을 실습했다.
-
-특히 PowerShell에서 발생한 `ls -ld` 오류를 통해 Windows PowerShell과 Linux 셸의 차이를 이해할 수 있었다.  
-또한 `/workspace` 경로가 없다는 오류를 해결하면서 컨테이너 내부의 실제 작업 경로가 `/app`임을 확인했다.
-
-Docker 볼륨 실습을 통해 컨테이너가 삭제되어도 볼륨에 저장된 데이터는 유지된다는 점도 확인했다.
-
-이번 미션을 통해 개발 환경 구축, 컨테이너 실행, 권한 관리, 볼륨 영속성, 트러블슈팅 기록까지 전반적인 개발 워크스테이션 구축 과정을 경험했다.
-
-### 추가
-
-이번 미션을 통해 개발 워크스테이션 구축에 필요한 기본 환경을 직접 설정하고 확인했다.
-
-#### 수행 내용 요약
-
-- GitHub 저장소 생성 및 로컬 프로젝트 연결
-- `Dockerfile` 작성
-- `nginx:alpine` 기반 Docker 이미지 빌드
-- Docker 컨테이너 실행
-- `8080:80` 포트 매핑 설정
-- `docker ps`로 컨테이너 실행 상태 확인
-- `curl.exe http://localhost:8080` 명령으로 웹 서버 응답 확인
-- 브라우저에서 `http://localhost:8080` 접속 확인
-- Docker 기본 명령어 실습
-  - `docker images`
-  - `docker ps`
-  - `docker ps -a`
-  - `docker logs`
-  - `docker stats`
-- `hello-world`, `ubuntu` 컨테이너 실행 실습
-- Docker 볼륨 생성 및 데이터 영속성 확인
-- 터미널 기본 명령어 실습
-- 파일 및 디렉토리 권한 변경 실습 (`755`, `644`, `700`)
-
-#### 최종 검증 결과
-
-컨테이너 실행 상태 확인:
+생성한 이미지를 이용해 컨테이너를 실행하는 명령어는 다음과 같다.
 
 ```bash
-docker ps
+docker run -d --name my-workstation-container -p 8080:80 my-workstation
 ```
 
-확인 결과:
+명령어 옵션의 의미는 다음과 같다.
 
 ```text
-CONTAINER ID   IMAGE            COMMAND                   CREATED          STATUS          PORTS                                     NAMES
-cd667d637c1a   my-workstation   "/docker-entrypoint.…"   52 seconds ago   Up 52 seconds   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   workstation-container
+-d
+- 컨테이너를 백그라운드에서 실행한다.
+
+--name my-workstation-container
+- 컨테이너 이름을 my-workstation-container로 지정한다.
+
+-p 8080:80
+- 호스트 PC의 8080번 포트를 컨테이너 내부의 80번 포트와 연결한다.
+
+my-workstation
+- 실행할 Docker 이미지 이름이다.
 ```
 
-웹 서버 응답 확인:
+기존에 같은 이름의 컨테이너가 있을 경우 다음 명령어로 삭제 후 다시 실행할 수 있다.
 
 ```bash
-curl.exe http://localhost:8080
+docker rm -f my-workstation-container
+docker run -d --name my-workstation-container -p 8080:80 my-workstation
 ```
 
-출력 결과:
+---
+
+## 9. 컨테이너 실행 상태 확인
+
+컨테이너 실행 상태는 다음 명령어로 확인할 수 있다.
+
+```bash
+docker ps
+```
+
+`docker ps` 명령어는 현재 실행 중인 컨테이너 목록을 보여준다.
+
+확인해야 할 주요 항목은 다음과 같다.
+
+```text
+CONTAINER ID
+- 컨테이너의 고유 ID이다.
+
+IMAGE
+- 컨테이너가 어떤 이미지로 실행되었는지 보여준다.
+
+COMMAND
+- 컨테이너에서 실행 중인 명령을 보여준다.
+
+STATUS
+- 컨테이너가 실행 중인지 상태를 보여준다.
+
+PORTS
+- 호스트와 컨테이너 포트가 어떻게 연결되어 있는지 보여준다.
+
+NAMES
+- 컨테이너 이름을 보여준다.
+```
+
+이 프로젝트에서는 다음과 같은 상태를 기대할 수 있다.
+
+```text
+IMAGE: my-workstation
+PORTS: 0.0.0.0:8080->80/tcp
+NAMES: my-workstation-container
+```
+
+---
+
+## 10. 웹 서버 응답 확인
+
+웹 서버가 정상적으로 실행되는지 확인하기 위해 다음 명령어를 실행했다.
+
+```bash
+curl http://localhost:8080
+```
+
+실행 결과는 다음과 같다.
 
 ```html
 <!DOCTYPE html>
@@ -912,150 +340,518 @@ curl.exe http://localhost:8080
 </html>
 ```
 
-위 결과를 통해 Docker 컨테이너가 정상적으로 실행되었고, 포트 매핑 및 웹 서버 접속이 올바르게 동작함을 확인했다.
+결과 해석은 다음과 같다.
 
-#### 트러블슈팅 정리
-
-**1) `docker logs` 명령 실행 오류**
-
-문제:
-- `docker logs` 실행 시 컨테이너 이름 또는 ID를 함께 입력하지 않아 오류가 발생했다.
-
-해결:
-
-```bash
-docker logs workstation-container
+```text
+- localhost:8080으로 접속했을 때 HTML 문서가 반환되었다.
+- Docker 컨테이너 내부의 Nginx 웹 서버가 정상적으로 실행 중이다.
+- site/index.html 파일이 정상적으로 서비스되고 있다.
 ```
 
-**2) PowerShell에서 `ls -ld` 명령 사용 문제**
+---
 
-문제:
-- Linux에서 사용하는 `ls -ld` 명령이 PowerShell 환경에서는 동일하게 동작하지 않았다.
+## 11. 브라우저 접속 확인
 
-해결:
-- Windows 환경에 맞는 명령어를 사용하거나, Git Bash 또는 WSL 같은 Linux 스타일 터미널을 활용했다.
+브라우저에서 다음 주소로 접속하여 웹 페이지를 확인할 수 있다.
 
-**3) CMD에서 `${PWD}` 사용 오류**
-
-문제:
-- `${PWD}`는 PowerShell 문법이므로 CMD에서는 인식되지 않았다.
-
-해결:
-- CMD에서는 `%cd%`를 사용해야 한다.
-- 또는 볼륨 옵션 없이 먼저 컨테이너를 실행해 동작을 확인할 수 있다.
-
-예시:
-
-```bash
-docker run -d --name workstation-container -p 8080:80 my-workstation
+```text
+http://localhost:8080
 ```
 
-**4) 컨테이너 이름 중복 오류**
+정상적으로 실행되면 다음 내용이 화면에 표시된다.
 
-문제:
-- 같은 이름의 컨테이너가 이미 존재하여 새 컨테이너 실행에 실패했다.
-
-해결:
-
-```bash
-docker rm -f workstation-container
-docker run -d --name workstation-container -p 8080:80 my-workstation
+```text
+Hello from Docker
+nginx container is running.
 ```
 
-**5) `ubuntu` 컨테이너에서 `bash` 종료 문제**
+프로젝트 폴더에는 브라우저 확인 결과를 저장한 파일도 포함되어 있다.
 
-문제:
-- `bash` 셸에서 `exit`를 입력하면 컨테이너가 종료되었다.
-
-해결:
-- 이는 정상 동작이며, 종료 후 `docker ps -a`로 상태를 확인할 수 있다.
-
-#### 느낀 점
-
-이번 실습을 통해 Docker 이미지를 만들고 컨테이너를 실행하는 기본 흐름을 직접 경험할 수 있었다.  
-또한 포트 매핑, 로그 확인, 볼륨 사용, 명령어 환경 차이 같은 실제 개발 환경에서 자주 만나는 문제를 직접 해결해 보면서 Docker 사용 방법을 더 익힐 수 있었다.
-
-### 바인드 마운트(Bind Mount) 검증
-
-호스트(내 PC)의 `site` 폴더를 컨테이너 내부 nginx 웹 루트(`/usr/share/nginx/html`)에 바인드 마운트하여,  
-호스트에서 수정한 파일이 컨테이너 웹 서버 응답에 즉시 반영되는지 확인했다.
-
-#### 1) 테스트용 폴더 및 파일 생성
-
-```bash
-mkdir -p site
-echo '<h1>Bind Mount Test</h1>' > site/index.html
-cat site/index.html
+```text
+localhost 스크린샷.png
 ```
 
-출력 결과:
+---
 
-```html
-<h1>Bind Mount Test</h1>
+## 12. 포트 매핑 설명
+
+이 프로젝트에서는 다음과 같이 포트를 연결했다.
+
+```text
+호스트 PC 8080번 포트 -> 컨테이너 내부 80번 포트
 ```
 
-#### 2) nginx 컨테이너 실행 (바인드 마운트 적용)
+Docker 실행 명령어에서는 다음 부분이 포트 매핑을 담당한다.
 
 ```bash
-docker rm -f mount-test
-docker run -d --name mount-test -p 8081:80 -v ${PWD}/site:/usr/share/nginx/html nginx:alpine
+-p 8080:80
+```
+
+의미는 다음과 같다.
+
+```text
+8080
+- 내 컴퓨터에서 접속할 포트이다.
+
+80
+- 컨테이너 내부에서 Nginx가 사용하는 포트이다.
+```
+
+따라서 사용자는 브라우저나 curl에서 다음 주소로 접속한다.
+
+```text
+http://localhost:8080
+```
+
+그러면 Docker가 요청을 컨테이너 내부의 80번 포트로 전달하고, Nginx가 HTML 파일을 응답한다.
+
+---
+
+## 13. 정적 웹 페이지 서비스 흐름
+
+이 프로젝트의 웹 페이지 서비스 흐름은 다음과 같다.
+
+```text
+1. 로컬 프로젝트의 site/index.html 파일 작성
+2. Dockerfile에서 site/ 폴더를 컨테이너 내부로 복사
+3. docker build 명령어로 이미지 생성
+4. docker run 명령어로 컨테이너 실행
+5. 호스트 8080 포트를 컨테이너 80 포트에 연결
+6. 브라우저 또는 curl로 localhost:8080 접속
+7. Nginx가 index.html 파일을 응답
+```
+
+흐름을 그림처럼 정리하면 다음과 같다.
+
+```text
+site/index.html
+        ↓
+Dockerfile의 COPY 명령
+        ↓
+/usr/share/nginx/html/
+        ↓
+Nginx 웹 서버
+        ↓
+localhost:8080
+```
+
+---
+
+## 14. 잘못 입력한 Docker 명령어와 오류
+
+실습 중 다음 명령어를 입력했다.
+
+```text
+docker rm / docker run / docker ps
+```
+
+실행 결과 다음 오류가 발생했다.
+
+```text
+container name cannot be empty
+Error response from daemon: No such container: docker
+Error response from daemon: No such container: run
+container name cannot be empty
+Error response from daemon: No such container: docker
+Error response from daemon: No such container: ps
+```
+
+오류 원인은 다음과 같다.
+
+```text
+- docker rm, docker run, docker ps는 각각 따로 실행해야 하는 명령어이다.
+- / 기호로 명령어를 연결하면 안 된다.
+- Docker가 docker, run, ps 같은 단어를 컨테이너 이름처럼 해석하면서 오류가 발생했다.
+```
+
+올바른 명령어 예시는 다음과 같다.
+
+```bash
+docker rm -f my-workstation-container
+docker run -d --name my-workstation-container -p 8080:80 my-workstation
 docker ps
 ```
 
-출력 결과 예시:
+이 오류를 통해 배운 점은 다음과 같다.
 
 ```text
-mount-test
-CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS         PORTS                                   NAMES
-xxxxxx         nginx:alpine   "/docker-entrypoint.…"   xx seconds ago  Up xx seconds  0.0.0.0:8081->80/tcp, [::]:8081->80/tcp mount-test
+- Docker 명령어는 정확한 형식으로 입력해야 한다.
+- 여러 명령어는 한 줄에 / 로 연결하지 않는다.
+- 오류 메시지를 확인하면 Docker가 어떤 값을 잘못 해석했는지 알 수 있다.
 ```
 
-#### 3) 웹 서버 응답 확인
+---
+
+## 15. 컨테이너 중지 및 삭제
+
+실행 중인 컨테이너를 중지하려면 다음 명령어를 사용할 수 있다.
 
 ```bash
-curl http://localhost:8081
+docker stop my-workstation-container
 ```
 
-출력 결과:
-
-```html
-<h1>Bind Mount Test</h1>
-```
-
-#### 4) 호스트 파일 수정 후 즉시 반영 확인
+컨테이너를 삭제하려면 다음 명령어를 사용할 수 있다.
 
 ```bash
-echo '<h1>Bind Mount Updated</h1>' > site/index.html
-cat site/index.html
-curl http://localhost:8081
+docker rm my-workstation-container
 ```
 
-출력 결과:
-
-```html
-<h1>Bind Mount Updated</h1>
-```
-
-#### 5) 검증 결과
-
-- 호스트의 `site/index.html` 파일 내용이 컨테이너 내부 nginx 웹 루트에 연결되었다.
-- 호스트에서 파일을 수정한 뒤 컨테이너를 다시 빌드하거나 재시작하지 않아도 웹 응답에 변경 사항이 반영되었다.
-- 이를 통해 바인드 마운트가 정상적으로 동작함을 확인했다.
-
-#### 6) 재현 시 주의사항
-
-- `8081` 포트가 이미 사용 중이면 다른 포트(예: `8082`)로 변경해야 한다.
-- 셸 환경에 따라 현재 경로 표기 방식이 다를 수 있다.
-  - PowerShell: `${PWD}`
-  - CMD: `%cd%`
-  - Git Bash / Linux / macOS: `$(pwd)`
-- Windows CMD 예시:
+중지와 삭제를 한 번에 처리하려면 다음 명령어를 사용할 수 있다.
 
 ```bash
-docker run -d --name mount-test -p 8081:80 -v %cd%/site:/usr/share/nginx/html nginx:alpine
+docker rm -f my-workstation-container
 ```
 
-#### 7) 정리
+명령어 의미는 다음과 같다.
 
-이 실습을 통해 **호스트 폴더와 컨테이너 내부 디렉터리를 직접 연결하는 바인드 마운트 방식**을 검증했으며,  
-로컬 파일 수정 사항이 컨테이너 서비스에 즉시 반영됨을 확인했다.
+```text
+docker stop
+- 실행 중인 컨테이너를 중지한다.
+
+docker rm
+- 중지된 컨테이너를 삭제한다.
+
+docker rm -f
+- 실행 중인 컨테이너도 강제로 중지하고 삭제한다.
+```
+
+---
+
+## 16. 자주 사용하는 Docker 명령어 정리
+
+이번 실습에서 사용한 주요 Docker 명령어는 다음과 같다.
+
+```bash
+docker --version
+docker info
+docker build -t my-workstation .
+docker images
+docker run -d --name my-workstation-container -p 8080:80 my-workstation
+docker ps
+docker stop my-workstation-container
+docker rm my-workstation-container
+docker rm -f my-workstation-container
+```
+
+각 명령어의 역할은 다음과 같다.
+
+```text
+docker --version
+- Docker 버전을 확인한다.
+
+docker info
+- Docker 실행 환경 정보를 확인한다.
+
+docker build -t my-workstation .
+- 현재 폴더의 Dockerfile을 이용해 my-workstation 이미지를 빌드한다.
+
+docker images
+- 로컬에 저장된 Docker 이미지 목록을 확인한다.
+
+docker run -d --name my-workstation-container -p 8080:80 my-workstation
+- my-workstation 이미지를 이용해 컨테이너를 실행한다.
+
+docker ps
+- 실행 중인 컨테이너 목록을 확인한다.
+
+docker stop my-workstation-container
+- 실행 중인 my-workstation-container 컨테이너를 중지한다.
+
+docker rm my-workstation-container
+- 중지된 my-workstation-container 컨테이너를 삭제한다.
+
+docker rm -f my-workstation-container
+- 실행 중인 컨테이너를 강제로 중지하고 삭제한다.
+```
+
+---
+
+## 17. Git 명령어 확인
+
+원격 저장소 연결을 확인하기 위해 다음 명령어를 사용했다.
+
+```bash
+git remote -v
+```
+
+실행 결과는 다음과 같다.
+
+```text
+origin  https://github.com/kodisei889-dev/kodisei-E1-1.git (fetch)
+origin  https://github.com/kodisei889-dev/kodisei-E1-1.git (push)
+```
+
+이 결과를 통해 다음을 확인할 수 있다.
+
+```text
+- 로컬 Git 저장소가 GitHub 원격 저장소와 연결되어 있다.
+- origin이라는 이름으로 원격 저장소가 등록되어 있다.
+- fetch와 push 주소가 모두 같은 GitHub 저장소를 가리킨다.
+```
+
+원격 저장소의 최신 정보를 가져오기 위해 다음 명령어도 실행했다.
+
+```bash
+git fetch origin
+```
+
+실행 결과는 다음과 같다.
+
+```text
+출력 없음
+```
+
+해석은 다음과 같다.
+
+```text
+- git fetch origin 명령 실행 후 별도 출력이 없었다.
+- 출력이 없더라도 명령이 실패했다는 의미는 아니다.
+- 오류 메시지가 없으면 정상적으로 실행된 것으로 볼 수 있다.
+```
+
+---
+
+## 18. Docker 이미지 목록 확인
+
+Docker 이미지 목록은 다음 명령어로 확인할 수 있다.
+
+```bash
+docker images
+```
+
+실습 환경에서 확인된 이미지는 다음과 같다.
+
+```text
+my-workstation
+ubuntu
+nginx
+hello-world
+```
+
+해석은 다음과 같다.
+
+```text
+my-workstation
+- 이번 실습에서 Dockerfile을 이용해 직접 빌드한 이미지이다.
+
+ubuntu
+- 로컬에 존재하는 Ubuntu 이미지이다.
+
+nginx
+- Nginx 웹 서버 이미지이다.
+
+hello-world
+- Docker 설치 및 실행 확인에 자주 사용하는 테스트 이미지이다.
+```
+
+이번 프로젝트에서 실제로 사용한 이미지는 다음과 같다.
+
+```text
+my-workstation
+nginx:alpine
+```
+
+---
+
+## 19. 전체 실행 순서
+
+이 프로젝트를 다시 실행하려면 다음 순서대로 진행하면 된다.
+
+```bash
+docker build -t my-workstation .
+docker rm -f my-workstation-container
+docker run -d --name my-workstation-container -p 8080:80 my-workstation
+docker ps
+curl http://localhost:8080
+```
+
+각 단계의 의미는 다음과 같다.
+
+```text
+1. docker build -t my-workstation .
+   - Dockerfile을 이용해 my-workstation 이미지를 빌드한다.
+
+2. docker rm -f my-workstation-container
+   - 같은 이름의 기존 컨테이너가 있으면 삭제한다.
+
+3. docker run -d --name my-workstation-container -p 8080:80 my-workstation
+   - my-workstation 이미지로 컨테이너를 실행한다.
+
+4. docker ps
+   - 컨테이너가 실행 중인지 확인한다.
+
+5. curl http://localhost:8080
+   - 웹 서버가 HTML을 정상적으로 응답하는지 확인한다.
+```
+
+---
+
+## 20. 실행 결과 요약
+
+이번 실습에서 확인한 결과는 다음과 같다.
+
+```text
+Docker 설치 확인
+- Docker version 29.9.2, build a82e528
+
+Docker 실행 환경 확인
+- Docker Desktop 기반 Linux 컨테이너 환경 확인
+
+Dockerfile 작성 확인
+- nginx:alpine 기반
+- site/ 폴더를 /usr/share/nginx/html/ 경로로 복사
+- 80번 포트 사용
+- Nginx 포그라운드 실행
+
+이미지 빌드 확인
+- docker build -t my-workstation . 실행 성공
+- my-workstation:latest 이미지 생성
+
+컨테이너 실행 확인
+- my-workstation 이미지 기반 컨테이너 실행
+- 호스트 8080 포트와 컨테이너 80 포트 연결
+
+웹 서버 응답 확인
+- curl http://localhost:8080 실행 성공
+- HTML 응답 확인
+
+Git 원격 저장소 확인
+- origin 원격 저장소가 GitHub 주소로 연결됨
+```
+
+---
+
+## 21. 핵심 개념 정리
+
+이번 실습의 핵심 개념은 다음과 같다.
+
+```text
+Dockerfile
+- Docker 이미지를 만들기 위한 설정 파일이다.
+
+Docker image
+- 컨테이너 실행에 필요한 파일과 설정을 포함한 실행 템플릿이다.
+
+Docker container
+- 이미지를 바탕으로 실제 실행되는 환경이다.
+
+Nginx
+- 정적 웹 페이지를 제공할 수 있는 웹 서버이다.
+
+Port mapping
+- 호스트 PC의 포트와 컨테이너 내부 포트를 연결하는 기능이다.
+
+curl
+- 터미널에서 웹 요청을 보내고 응답을 확인할 수 있는 명령어이다.
+
+Git remote
+- 로컬 저장소와 연결된 원격 저장소 정보를 의미한다.
+```
+
+---
+
+## 22. 배운 점
+
+이번 실습을 통해 Docker의 기본 흐름을 직접 경험할 수 있었다.
+
+```text
+첫째, Dockerfile을 작성하면 같은 실행 환경을 반복해서 만들 수 있다는 점을 배웠다.
+
+둘째, nginx:alpine 이미지를 이용하면 간단한 정적 웹 서버를 빠르게 구성할 수 있다는 점을 확인했다.
+
+셋째, docker build 명령어로 이미지를 만들고 docker run 명령어로 컨테이너를 실행하는 흐름을 이해했다.
+
+넷째, -p 8080:80 옵션을 통해 내 컴퓨터의 8080번 포트와 컨테이너 내부의 80번 포트를 연결하는 방법을 익혔다.
+
+다섯째, curl http://localhost:8080 명령어를 사용하여 웹 서버가 정상적으로 응답하는지 확인했다.
+
+여섯째, Docker 명령어를 잘못 입력했을 때 오류 메시지를 보고 원인을 파악하는 연습을 했다.
+
+일곱째, git remote -v 명령어를 통해 로컬 저장소와 GitHub 원격 저장소의 연결 상태를 확인했다.
+```
+
+---
+
+## 23. 오류 해결 경험
+
+실습 중 잘못된 명령어 입력으로 오류가 발생했다.
+
+잘못 입력한 예시는 다음과 같다.
+
+```text
+docker rm / docker run / docker ps
+```
+
+이 입력은 여러 Docker 명령어를 한 줄에 잘못 연결한 형태이다.
+
+Docker는 `/`, `docker`, `run`, `ps` 등을 올바른 명령 구분자로 이해하지 못하고, 컨테이너 이름처럼 해석했다.
+
+그 결과 다음과 같은 오류가 발생했다.
+
+```text
+container name cannot be empty
+Error response from daemon: No such container: docker
+Error response from daemon: No such container: run
+Error response from daemon: No such container: ps
+```
+
+올바른 방식은 다음처럼 명령어를 각각 분리해서 실행하는 것이다.
+
+```bash
+docker rm -f my-workstation-container
+docker run -d --name my-workstation-container -p 8080:80 my-workstation
+docker ps
+```
+
+이 경험을 통해 다음을 알게 되었다.
+
+```text
+- Docker 명령어는 정확한 형식으로 입력해야 한다.
+- 여러 명령어를 실행할 때는 한 줄에 무리하게 연결하지 않고 각각 실행하는 것이 안전하다.
+- 오류 메시지는 문제 해결의 중요한 단서가 된다.
+```
+
+---
+
+## 24. 최종 확인 결과
+
+최종적으로 다음 항목을 모두 확인했다.
+
+```text
+[확인 완료] Docker 버전 확인
+[확인 완료] Docker 실행 환경 확인
+[확인 완료] 프로젝트 구조 확인
+[확인 완료] Dockerfile 내용 확인
+[확인 완료] Docker 이미지 빌드 성공
+[확인 완료] my-workstation 이미지 생성
+[확인 완료] 컨테이너 실행 명령 정리
+[확인 완료] 포트 매핑 설정 확인
+[확인 완료] curl을 통한 웹 서버 응답 확인
+[확인 완료] 브라우저 접속 결과 파일 확인
+[확인 완료] GitHub 원격 저장소 연결 확인
+[확인 완료] git fetch origin 실행 확인
+[확인 완료] Docker 명령어 오류 원인 분석
+[확인 완료] 올바른 Docker 명령어 정리
+[확인 완료] 전체 재실행 절차 정리
+```
+
+---
+
+## 25. 결론
+
+이 프로젝트는 Docker를 이용해 정적 웹 페이지를 컨테이너 환경에서 실행하는 실습이다.
+
+최종적으로 다음 흐름이 정상적으로 동작함을 확인했다.
+
+```text
+Dockerfile 작성
+→ Docker 이미지 빌드
+→ 컨테이너 실행
+→ 포트 매핑
+→ localhost:8080 접속
+→ Nginx HTML 응답 확인
+```
+
+따라서 이 프로젝트는 Docker 기반 정적 웹 서버 실행 실습 요구사항을 충족한다.
+
+이번 실습을 통해 Docker의 기본 사용 흐름과 GitHub 저장소 연결 확인 방법을 익힐 수 있었다.
