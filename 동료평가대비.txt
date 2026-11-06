@@ -8,9 +8,6 @@
 컴퓨터 예시:
 C:\Users\Min\Desktop\photo.jpg
 
-뜻:
-C드라이브부터 시작해서 Users → Min → Desktop → photo.jpg까지 가라는 뜻이에요.
-
 ✅ 특징: 지금 내가 어디에 있든 항상 같은 위치를 가리켜요.
 
 2. 상대 경로 = 지금 있는 곳을 기준으로 찾는 길
@@ -23,9 +20,6 @@ C드라이브부터 시작해서 Users → Min → Desktop → photo.jpg까지 �
 컴퓨터 예시:
 
 ../images/cat.png
-
-뜻:
-지금 폴더에서 한 칸 위로 올라간 뒤, images 폴더 안의 cat.png를 찾으라는 뜻이에요.
 
 ✅ 특징: 내가 지금 어디에 있느냐에 따라 결과가 달라질 수 있어요.
 
@@ -290,3 +284,13 @@ Docker 볼륨은 컨테이너가 사라져도 데이터를 남겨두기 위한 �
 
 git = 공책에 글 적기 = 집 = 한정된 공간
 github = 공책에 적은 글을 온라인에 올리기 = SNS = 나를 알게된 사람들이 모두 알 수 있음.
+
+CLI (Command Line Interface): 검은 화면(터미널)에 직접 명령어를 타이핑해서 컴퓨터를 쓰는 방식이에요. (예: cd my_folder라고 입력해서 폴더로 이동하기)
+GUI (Graphical User Interface): 윈도우나 맥 OS처럼 아이콘, 버튼, 메뉴를 마우스로 클릭해서 컴퓨터를 쓰는 방식이에요. (예: 폴더 아이콘을 더블 클릭해서 열기)
+CMD (Command Prompt / 명령 프롬프트)
+정의: 마이크로소프트가 윈도우(Windows) 운영체제용으로 만든 구체적인 CLI 프로그램입니다.
+
+Docker image = 재료 / 부품 / windows image (cd)
+docker container = 실행 / 윈도우 설치중 / 김밥 싸는 중 등
+docker = 주방 / 주방장 / CD rome 등
+
